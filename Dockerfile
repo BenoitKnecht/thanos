@@ -15,4 +15,7 @@ COPY --from=build /go/src/github.com/improbable-eng/thanos/thanos /bin/thanos
 
 USER nobody
 
+EXPOSE 10900 10901 10902
+EXPOSE 10900/udp
+
 ENTRYPOINT [ "/bin/thanos" ]
