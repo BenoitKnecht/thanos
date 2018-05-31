@@ -13,4 +13,6 @@ LABEL maintainer="The Thanos Authors"
 
 COPY --from=build /go/src/github.com/improbable-eng/thanos/thanos /bin/thanos
 
+USER nobody
+
 ENTRYPOINT [ "/bin/thanos" ]
