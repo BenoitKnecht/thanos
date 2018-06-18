@@ -117,6 +117,10 @@ func storeClientGRPCOpts(reg *prometheus.Registry, tracer opentracing.Tracer) []
 				tracing.StreamClientInterceptor(tracer),
 			),
 		),
+		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
+			dialer := net.Dialer{Timeout: timeout, KeepAlive: 10 * time.Second}
+			return dialer.Dial("tcp", addr)
+		}),
 	}
 
 	if reg != nil {
