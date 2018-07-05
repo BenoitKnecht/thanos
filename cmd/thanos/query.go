@@ -55,6 +55,9 @@ func registerQuery(m map[string]setupFunc, app *kingpin.Application, name string
 	stores := cmd.Flag("store", "Addresses of statically configured store API servers (repeatable).").
 		PlaceHolder("<store>").Strings()
 
+	enableAutodownsampling := cmd.Flag("query.auto-downsampling", "Enable automatic adjustment (step / 5) to what source of data should be used in store gateways if no max_source_resolution param is specified. ").
+		Default("false").Bool()
+
 	m[name] = func(g *run.Group, logger log.Logger, reg *prometheus.Registry, tracer opentracing.Tracer, _ bool) error {
 		peer, err := newPeerFn(logger, reg, true, *httpAdvertiseAddr, true)
 		if err != nil {
@@ -87,6 +90,7 @@ func registerQuery(m map[string]setupFunc, app *kingpin.Application, name string
 			peer,
 			selectorLset,
 			*stores,
+			*enableAutodownsampling,
 		)
 	}
 }
@@ -145,6 +149,7 @@ func runQuery(
 	peer *cluster.Peer,
 	selectorLset labels.Labels,
 	storeAddrs []string,
+	enableAutodownsampling bool,
 ) error {
 	var staticSpecs []query.StoreSpec
 	for _, addr := range storeAddrs {
@@ -212,7 +217,7 @@ func runQuery(
 		router := route.New()
 		ui.New(logger, nil).Register(router)
 
-		api := v1.NewAPI(reg, engine, queryableCreator)
+		api := v1.NewAPI(logger, reg, engine, queryableCreator, enableAutodownsampling)
 		api.Register(router.WithPrefix("/api/v1"), tracer, logger)
 
 		mux := http.NewServeMux()
@@ -229,7 +234,7 @@ func runQuery(
 			level.Info(logger).Log("msg", "Listening for query and metrics", "address", httpBindAddr)
 			return errors.Wrap(http.Serve(l, mux), "serve query")
 		}, func(error) {
-			runutil.LogOnErr(logger, l, "query and metric listener")
+			runutil.CloseWithLogOnErr(logger, l, "query and metric listener")
 		})
 	}
 	// Start query (proxy) gRPC StoreAPI.
@@ -248,7 +253,7 @@ func runQuery(
 			return errors.Wrap(s.Serve(l), "serve gRPC")
 		}, func(error) {
 			s.Stop()
-			runutil.LogOnErr(logger, l, "store gRPC listener")
+			runutil.CloseWithLogOnErr(logger, l, "store gRPC listener")
 		})
 	}
 
