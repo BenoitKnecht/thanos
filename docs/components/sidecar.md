@@ -7,7 +7,7 @@ Prometheus servers connected to the Thanos cluster via the sidecar are subject t
 
 * The minimum Prometheus version is 2.0
 * The `external_labels` section of the configuration implements is in line with the cluster's [labeling scheme](/docs-for-labeling-schemas)
-* The `--storage.tsdb.min-block-duration` and `--storage.tsdb.max-block-duration` must be set to equal values. The default of `2h` is recommended.
+* The `--storage.tsdb.min-block-duration` and `--storage.tsdb.max-block-duration` must be set to equal values to disable local compaction. The default of `2h` is recommended.
 
 The retention is recommended to not be lower than three times the block duration. This achieves resilience in the face of connectivity issues to the object storage since all local data will remain available within the Thanos cluster. If connectivity gets restored the backlog of blocks gets uploaded to the object storage.
 
@@ -59,26 +59,38 @@ Flags:
       --cluster.advertise-address=CLUSTER.ADVERTISE-ADDRESS  
                                  Explicit (external) ip:port address to
                                  advertise for gossip in gossip cluster. Used
-                                 internally for membership only
+                                 internally for membership only.
       --cluster.peers=CLUSTER.PEERS ...  
                                  Initial peers to join the cluster. It can be
                                  either <ip:port>, or <domain:port>. A lookup
                                  resolution is done only at the startup.
-      --cluster.gossip-interval=5s  
+      --cluster.gossip-interval=<gossip interval>  
                                  Interval between sending gossip messages. By
                                  lowering this value (more frequent) gossip
                                  messages are propagated across the cluster more
                                  quickly at the expense of increased bandwidth.
-      --cluster.pushpull-interval=5s  
+                                 Default is used from a specified network-type.
+      --cluster.pushpull-interval=<push-pull interval>  
                                  Interval for gossip state syncs. Setting this
                                  interval lower (more frequent) will increase
                                  convergence speeds across larger clusters at
                                  the expense of increased bandwidth usage.
-      --cluster.refresh-interval=1m0s  
+                                 Default is used from a specified network-type.
+      --cluster.refresh-interval=1m  
                                  Interval for membership to refresh
                                  cluster.peers state, 0 disables refresh.
+      --cluster.secret-key=CLUSTER.SECRET-KEY  
+                                 Initial secret key to encrypt cluster gossip.
+                                 Can be one of AES-128, AES-192, or AES-256 in
+                                 hexadecimal format.
+      --cluster.network-type=lan  
+                                 Network type with predefined peers
+                                 configurations. Sets of configurations
+                                 accounting the latency differences between
+                                 network types: local, lan, wan.
       --prometheus.url=http://localhost:9090  
-                                 URL at which to reach Prometheus's API.
+                                 URL at which to reach Prometheus's API. For
+                                 better performance use local network.
       --tsdb.path="./data"       Data directory of TSDB.
       --gcs.bucket=<bucket>      Google Cloud Storage bucket name for stored
                                  blocks. If empty, sidecar won't store any block
@@ -96,8 +108,9 @@ Flags:
       --reloader.config-envsubst-file=""  
                                  Output file for environment variable
                                  substituted config file.
-      --reloader.rule-dir=RELOADER.RULE-DIR  
-                                 Rule directory for the reloader to refresh.
+      --reloader.rule-dir=RELOADER.RULE-DIR ...  
+                                 Rule directories for the reloader to refresh
+                                 (repeated field).
 
 ```
 

@@ -5,7 +5,7 @@ It keeps a small amount of information about all remote blocks on local disk and
 
 ```
 $ thanos store \
-    --tsdb.path        "/local/state/data/dir" \
+    --data-dir         "/local/state/data/dir" \
     --gcs.bucket       "example-bucket" \
     --cluster.peers    "thanos-cluster.example.org"
 ```
@@ -51,25 +51,36 @@ Flags:
       --cluster.advertise-address=CLUSTER.ADVERTISE-ADDRESS  
                                 Explicit (external) ip:port address to advertise
                                 for gossip in gossip cluster. Used internally
-                                for membership only
+                                for membership only.
       --cluster.peers=CLUSTER.PEERS ...  
                                 Initial peers to join the cluster. It can be
                                 either <ip:port>, or <domain:port>. A lookup
                                 resolution is done only at the startup.
-      --cluster.gossip-interval=5s  
+      --cluster.gossip-interval=<gossip interval>  
                                 Interval between sending gossip messages. By
                                 lowering this value (more frequent) gossip
                                 messages are propagated across the cluster more
                                 quickly at the expense of increased bandwidth.
-      --cluster.pushpull-interval=5s  
+                                Default is used from a specified network-type.
+      --cluster.pushpull-interval=<push-pull interval>  
                                 Interval for gossip state syncs. Setting this
                                 interval lower (more frequent) will increase
                                 convergence speeds across larger clusters at the
-                                expense of increased bandwidth usage.
-      --cluster.refresh-interval=1m0s  
+                                expense of increased bandwidth usage. Default is
+                                used from a specified network-type.
+      --cluster.refresh-interval=1m  
                                 Interval for membership to refresh cluster.peers
                                 state, 0 disables refresh.
-      --tsdb.path="./data"      Data directory of TSDB.
+      --cluster.secret-key=CLUSTER.SECRET-KEY  
+                                Initial secret key to encrypt cluster gossip.
+                                Can be one of AES-128, AES-192, or AES-256 in
+                                hexadecimal format.
+      --cluster.network-type=lan  
+                                Network type with predefined peers
+                                configurations. Sets of configurations
+                                accounting the latency differences between
+                                network types: local, lan, wan.
+      --data-dir="./data"       Data directory in which to cache remote blocks.
       --gcs.bucket=<bucket>     Google Cloud Storage bucket name for stored
                                 blocks. If empty sidecar won't store any block
                                 inside Google Cloud Storage.

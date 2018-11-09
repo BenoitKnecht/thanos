@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"text/template"
 	"time"
 
@@ -32,6 +33,8 @@ var (
 		for id := range issuesMap {
 			s = append(s, id)
 		}
+
+		sort.Strings(s)
 		return s
 	}
 )
@@ -100,7 +103,7 @@ func registerBucket(m map[string]setupFunc, app *kingpin.Application, name strin
 			v = verifier.New(logger, bkt, issues)
 		}
 
-		idMatcher := func(ulid.ULID) bool { return true }
+		var idMatcher func(ulid.ULID) bool = nil
 		if len(*verifyIDWhitelist) > 0 {
 			whilelistIDs := map[string]struct{}{}
 			for _, bid := range *verifyIDWhitelist {
@@ -148,6 +151,23 @@ func registerBucket(m map[string]setupFunc, app *kingpin.Application, name strin
 		case "":
 			printBlock = func(id ulid.ULID) error {
 				fmt.Fprintln(os.Stdout, id.String())
+				return nil
+			}
+		case "wide":
+			printBlock = func(id ulid.ULID) error {
+				m, err := block.DownloadMeta(ctx, logger, bkt, id)
+				if err != nil {
+					return err
+				}
+
+				minTime := time.Unix(m.MinTime/1000, 0)
+				maxTime := time.Unix(m.MaxTime/1000, 0)
+
+				if _, err = fmt.Fprintf(os.Stdout, "%s -- %s - %s Diff: %s, Compaction: %d, Downsample: %d, Source: %s\n",
+					m.ULID, minTime.Format("2006-01-02 15:04"), maxTime.Format("2006-01-02 15:04"), maxTime.Sub(minTime),
+					m.Compaction.Level, m.Thanos.Downsample.Resolution, m.Thanos.Source); err != nil {
+					return err
+				}
 				return nil
 			}
 		case "json":
